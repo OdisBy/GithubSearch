@@ -1,61 +1,110 @@
 package com.odisby.githubsearch.ui
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import com.odisby.githubsearch.R
+import android.util.AttributeSet
+import android.view.View
+import androidx.appcompat.app.AppCompatActivity
+import androidx.datastore.core.DataStore
+import androidx.datastore.dataStore
+import androidx.lifecycle.lifecycleScope
+import com.google.gson.Gson
+import com.odisby.githubsearch.ui.adapter.RepositoryAdapter
+import com.odisby.githubsearch.data.GithubService
 import com.odisby.githubsearch.databinding.ActivityMainBinding
+import com.odisby.githubsearch.datastore.UsersPrefSerializer
 import com.odisby.githubsearch.domain.Repository
+import com.odisby.githubsearch.domain.UsersPref
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import retrofit2.Retrofit
+import retrofit2.await
+import retrofit2.converter.gson.GsonConverterFactory
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private lateinit var api: GithubService
+    private lateinit var adapter: RepositoryAdapter
+
+    private val Context.usersDataStore: DataStore<UsersPref> by dataStore(
+        fileName = "users_prefs.pb",
+        serializer = UsersPrefSerializer
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        showUserName()
         setupRetrofit()
-        getAllReposByUserName()
-    }
+        setupListeners()
+        adapter = RepositoryAdapter()
+        binding.rvListaRepositories.adapter = adapter
 
-    //metodo responsavel por configurar os listeners click da tela
+        lifecycleScope.launch {
+            lastUserFlow.collect { lastUser ->
+                if(lastUser != null){
+                    binding.etNomeUsuario.setText(lastUser)
+                    getAllReposByUserName(lastUser)
+                }
+            }
+        }
+    }
     private fun setupListeners() {
-
+        binding.btnConfirmar.setOnClickListener {
+            val username = binding.etNomeUsuario.text.toString()
+            lifecycleScope.launch {
+                saveLastUser(username)
+            }
+        }
     }
 
+    private val lastUserFlow: Flow<String?>
+        get() = usersDataStore.data.map { it.lastUser }
 
-    // salvar o usuario preenchido no EditText utilizando uma SharedPreferences
-    private fun saveUserLocal() {
-        //@TODO 3 - Persistir o usuario preenchido na editText com a SharedPref no listener do botao salvar
+    private suspend fun saveLastUser(username: String) {
+        usersDataStore.updateData { currentPref ->
+            currentPref.copy(lastUser = username)
+        }
     }
 
-    private fun showUserName() {
-        //@TODO 4- depois de persistir o usuario exibir sempre as informacoes no EditText  se a sharedpref possuir algum valor, exibir no proprio editText o valor salvo
+    private suspend fun addUserToFavorites(username: String) {
+        usersDataStore.updateData { currentPrefs ->
+            currentPrefs.copy(historic = currentPrefs.historic.add(username))
+        }
     }
 
-    //Metodo responsavel por fazer a configuracao base do Retrofit
-    fun setupRetrofit() {
-        /*
-           @TODO 5 -  realizar a Configuracao base do retrofit
-           Documentacao oficial do retrofit - https://square.github.io/retrofit/
-           URL_BASE da API do  GitHub= https://api.github.com/
-           lembre-se de utilizar o GsonConverterFactory mostrado no curso
-        */
+    private suspend fun removeUserFromFavorites(username: String) {
+        usersDataStore.updateData { currentPrefs ->
+            currentPrefs.copy(historic = currentPrefs.historic.remove(username))
+        }
+    }
+    val favoriteUsersFlow: Flow<List<String>>
+        get() = usersDataStore.data.map { it.historic }
+
+
+    private fun setupRetrofit() {
+
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://api.github.com/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        api = retrofit.create(GithubService::class.java)
     }
 
     //Metodo responsavel por buscar todos os repositorios do usuario fornecido
-    fun getAllReposByUserName() {
-        // TODO 6 - realizar a implementacao do callback do retrofit e chamar o metodo setupAdapter se retornar os dados com sucesso
-    }
-
-    // Metodo responsavel por realizar a configuracao do adapter
-    fun setupAdapter(list: List<Repository>) {
-        /*
-            @TODO 7 - Implementar a configuracao do Adapter , construir o adapter e instancia-lo
-            passando a listagem dos repositorios
-         */
+    private fun getAllReposByUserName(username: String) {
+        var data: List<Repository>
+        CoroutineScope(Dispatchers.Main).launch {
+            data = api.getAllRepositoriesByUser(username)
+            // TODO rodando no dispatchers main plmds arruma
+            adapter.updateList(data)
+        }
     }
 
 
@@ -82,6 +131,9 @@ class MainActivity : AppCompatActivity() {
                 Uri.parse(urlRepository)
             )
         )
+    }
 
+    private companion object{
+        const val USERS_HIST = "users_historic"
     }
 }

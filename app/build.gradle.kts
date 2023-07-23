@@ -2,6 +2,7 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.kotlinx.serialization)
 }
 
 android {
@@ -46,7 +47,14 @@ dependencies {
     implementation(libs.material)
     implementation(libs.constraintlayout)
 
+//    implementationB(libs.bundles.retrofit)
+//    implementation(libs.squareup.retrofit)
+//    implementation(libs.squareup.retrofit.gson)
     implementation(libs.bundles.retrofit)
+    implementation(libs.androidx.protodatastore)
+    implementation(libs.kotlinx.collections.immutable)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.lifecycle.runtime)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
