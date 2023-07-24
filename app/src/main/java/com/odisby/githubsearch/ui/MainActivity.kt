@@ -3,6 +3,7 @@ package com.odisby.githubsearch.ui
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -59,7 +60,6 @@ class MainActivity : AppCompatActivity() {
             lastUserFlow.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
                 .collect { lastUser ->
                     lastUser?.let {
-                        Log.d("MainActivity", "Novo usuário: $lastUser capturado no flow")
                         if(firstOpen) {
                             binding.etNomeUsuario.setText(lastUser)
                             firstOpen = !firstOpen
@@ -74,7 +74,6 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             favoriteUsersFlow.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
                 .collect { fav ->
-                    Log.d("MainActivity", "Favorite users update flow fav: $fav")
                     favoriteUsers = fav
                     setupAutoCompleteFavorites()
                     usernameOriginal?.let {
@@ -89,7 +88,6 @@ class MainActivity : AppCompatActivity() {
         binding.etNomeUsuario.apply {
             setAdapter(arrayAdapter)
             setOnFocusChangeListener { v, hasFocus ->
-                Log.d("CursorChange", "$hasFocus")
                 if(hasFocus){
                     showDropDown()
                 } else {
@@ -112,7 +110,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun userIsFavorite(userText: String): Boolean {
-        Log.d("MainActivity", "userIsFavorite: favoriteUsers: $favoriteUsers --- UserText: $userText")
         return favoriteUsers.contains(userText)
     }
 
@@ -129,7 +126,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun addUserToFavorites(username: String) = lifecycleScope.launch {
-        Log.d("MainActivity", "Adicionando ${username.lowercase()} para favoritos")
         try{
             usersDataStore.updateData { currentPrefs ->
                 currentPrefs.copy(favorites = currentPrefs.favorites.toMutableSet().apply { add(username.lowercase()) })
@@ -167,34 +163,41 @@ class MainActivity : AppCompatActivity() {
     //Metodo responsavel por buscar todos os repositorios do usuario fornecido
     private suspend fun getAllReposByUserName(username: String) {
         try{
-            Log.d("MainActivity", "Chamando get all repositories by username")
             val data = api.getAllRepositoriesByUser(username)
-            Log.d("MainActivity", "Get all data and set usernameoriginal")
             usernameOriginal = data.first().owner.login
             setupUsernameAndFavView()
             adapter.updateList(data)
+            noErrors()
         } catch (e: HttpException) {
             when(e.code()) {
                 404 -> {
                     Log.e("MainActivity", "Usuário não encontrado: $username")
+                    adapter.updateList(emptyList())
                     lastUserNotFound()
                 }
                 else -> {
                     Log.e("MainActivity", "Erro na comunicação com a API: ${e.message()}")
+                    adapter.updateList(emptyList())
+                    noConnectionError()
                 }
             }
-            disableUsernameAndFavView()
         }
         catch (e: Exception) {
             e.stackTrace
             Log.e("MainActivity", "Erro ao getAllReposByUserName: ${e.message.toString()}")
-            disableUsernameAndFavView()
+            adapter.updateList(emptyList())
+            noConnectionError()
+
         }
     }
 
+    private fun noErrors() {
+        binding.rvListaRepositories.visibility = View.VISIBLE
+        binding.tvNotFound.visibility = View.INVISIBLE
+        binding.ivNotFound.visibility = View.INVISIBLE
+    }
+
     private fun setupUsernameAndFavView() {
-        Log.d("MainActivity", "Setup username and favorite view")
-        Log.d("MainActivity", "usernameOriginal: $usernameOriginal")
         binding.tvNameSearched.text = usernameOriginal
         binding.linearUserFav.visibility = View.VISIBLE
         binding.btnFavorite.apply {
@@ -234,10 +237,41 @@ class MainActivity : AppCompatActivity() {
         binding.linearUserFav.visibility = View.GONE
     }
 
+    private fun noConnectionError() {
+        setError(
+            drawable = AppCompatResources.getDrawable(applicationContext, R.drawable.ic_no_internet)!!,
+            errorText = getString(R.string.error_no_internet)
+        )
+    }
+
     private suspend fun lastUserNotFound() {
         usersDataStore.updateData { currentPref ->
             currentPref.copy(lastUser = null)
         }
+        setError(
+            drawable = AppCompatResources.getDrawable(applicationContext, R.drawable.ic_person_search)!!,
+            errorText = getString(R.string.error_not_found)
+        )
+    }
+
+    private fun setError(drawable: Drawable, errorText: String) {
+        disableUsernameAndFavView()
+        binding.rvListaRepositories.visibility = View.INVISIBLE
+
+
+        binding.tvNotFound.apply {
+            visibility = View.VISIBLE
+            text = errorText
+        }
+
+        binding.ivNotFound.apply {
+            visibility = View.VISIBLE
+            setImageDrawable(drawable)
+        }
+
+        binding.tvNotFound.visibility = View.VISIBLE
+        binding.ivNotFound.visibility = View.VISIBLE
+
     }
 
 

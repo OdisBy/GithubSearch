@@ -4,4 +4,6 @@
     <string name="confirmar">Confirmar</string>
     <string name="im_desc_ic_share">Botão de compartilhar</string>
     <string name="desc_favorite_button">Botão de favorito</string>
+    <string name="error_not_found">Usuário não encontrado</string>
+    <string name="error_no_internet">Sem conexão.\nTente novamente mais tarde</string>
 </resources>
