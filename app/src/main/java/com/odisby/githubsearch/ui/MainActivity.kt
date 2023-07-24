@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.ArrayAdapter
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources
@@ -35,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: RepositoryAdapter
     private var favoriteUsers = emptySet<String>()
     private var usernameOriginal: String? = null
+    private var firstOpen = true
 
     private val Context.usersDataStore: DataStore<UsersPref> by dataStore(
         fileName = "users_prefs.pb",
@@ -58,9 +60,12 @@ class MainActivity : AppCompatActivity() {
                 .collect { lastUser ->
                     lastUser?.let {
                         Log.d("MainActivity", "Novo usuário: $lastUser capturado no flow")
+                        if(firstOpen) {
+                            binding.etNomeUsuario.setText(lastUser)
+                            firstOpen = !firstOpen
+                        }
                         if (lastUser != lastUserCache) {
                             lastUserCache = lastUser
-                            binding.etNomeUsuario.setText(lastUser)
                             getAllReposByUserName(lastUser)
                         }
                     }
@@ -71,17 +76,36 @@ class MainActivity : AppCompatActivity() {
                 .collect { fav ->
                     Log.d("MainActivity", "Favorite users update flow fav: $fav")
                     favoriteUsers = fav
+                    setupAutoCompleteFavorites()
                     usernameOriginal?.let {
                         setupUsernameAndFavView()
                     }
                 }
         }
     }
+
+    private fun setupAutoCompleteFavorites() {
+        val arrayAdapter = ArrayAdapter(applicationContext, android.R.layout.simple_list_item_1, favoriteUsers.toList())
+        binding.etNomeUsuario.apply {
+            setAdapter(arrayAdapter)
+            setOnFocusChangeListener { v, hasFocus ->
+                Log.d("CursorChange", "$hasFocus")
+                if(hasFocus){
+                    showDropDown()
+                } else {
+                    hideKeyboard()
+                }
+            }
+            setOnItemClickListener { parent, view, position, id ->
+                hideKeyboard()
+            }
+        }
+    }
+
     private fun setupListeners() {
         binding.btnConfirmar.setOnClickListener {
             val username = binding.etNomeUsuario.text.toString()
             lifecycleScope.launch {
-                hideKeyboard(this@MainActivity)
                 saveLastUser(username)
             }
         }
@@ -242,12 +266,9 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    fun hideKeyboard(activity: Activity) {
-        val inputMethodManager = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        val currentFocusedView = activity.currentFocus
-        if (currentFocusedView != null) {
-            inputMethodManager.hideSoftInputFromWindow(currentFocusedView.windowToken, 0)
-        }
+    fun View.hideKeyboard() {
+        val inputMethodManager = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputMethodManager.hideSoftInputFromWindow(windowToken, 0)
     }
 
     private companion object{
