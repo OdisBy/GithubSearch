@@ -46,13 +46,8 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.constraintlayout)
-
-//    implementationB(libs.bundles.retrofit)
-//    implementation(libs.squareup.retrofit)
-//    implementation(libs.squareup.retrofit.gson)
     implementation(libs.bundles.retrofit)
     implementation(libs.androidx.protodatastore)
-    implementation(libs.kotlinx.collections.immutable)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.lifecycle.runtime)
 
