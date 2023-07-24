@@ -7,4 +7,6 @@
     <string name="desc_favorite_button">Favorite button</string>
     <string name="error_not_found">User not found</string>
     <string name="error_no_internet">No connection\nTry again later</string>
+    <string name="confirm_open_browser_title">Abrir no browser</string>
+    <string name="confirm_open_browser_msg">Você gostaria de abrir o repositorio no browser?</string>
 </resources>

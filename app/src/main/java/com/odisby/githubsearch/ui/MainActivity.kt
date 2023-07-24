@@ -18,6 +18,7 @@ import androidx.datastore.dataStore
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.odisby.githubsearch.R
 import com.odisby.githubsearch.ui.adapter.RepositoryAdapter
 import com.odisby.githubsearch.data.GithubService
@@ -49,10 +50,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setupRetrofit()
-        setupListeners()
         adapter = RepositoryAdapter()
         binding.rvListaRepositories.adapter = adapter
         favoriteUsersFlow
+        setupListeners()
 
         var lastUserCache: String? = null
 
@@ -106,6 +107,14 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 saveLastUser(username)
             }
+        }
+
+        adapter.itemLister = { repo ->
+            confirmOpenBrowser(repo.htmlUrl)
+        }
+
+        adapter.btnShareLister = { repo ->
+            shareRepositoryLink(repo.htmlUrl)
         }
     }
 
@@ -274,9 +283,6 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-
-    // Metodo responsavel por compartilhar o link do repositorio selecionado
-    // @Todo 11 - Colocar esse metodo no click do share item do adapter
     fun shareRepositoryLink(urlRepository: String) {
         val sendIntent: Intent = Intent().apply {
             action = Intent.ACTION_SEND
@@ -290,8 +296,7 @@ class MainActivity : AppCompatActivity() {
 
     // Metodo responsavel por abrir o browser com o link informado do repositorio
 
-    // @Todo 12 - Colocar esse metodo no click item do adapter
-    fun openBrowser(urlRepository: String) {
+    private fun openBrowser(urlRepository: String) {
         startActivity(
             Intent(
                 Intent.ACTION_VIEW,
@@ -299,6 +304,21 @@ class MainActivity : AppCompatActivity() {
             )
         )
     }
+
+    private fun confirmOpenBrowser(urlRepository: String){
+        MaterialAlertDialogBuilder(this)
+            .setTitle(resources.getString(R.string.confirm_open_browser_title))
+            .setMessage(resources.getString(R.string.confirm_open_browser_msg))
+            .setNegativeButton("Cancelar") { dialog, which ->
+                // Respond to negative button press
+            }
+            .setPositiveButton("Confirmar") { dialog, which ->
+                openBrowser(urlRepository)
+            }
+            .show()
+    }
+
+
 
     fun View.hideKeyboard() {
         val inputMethodManager = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager

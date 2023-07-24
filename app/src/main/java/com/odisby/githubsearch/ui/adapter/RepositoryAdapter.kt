@@ -1,12 +1,10 @@
 package com.odisby.githubsearch.ui.adapter
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import com.odisby.githubsearch.R
 import com.odisby.githubsearch.databinding.RepositoryItemBinding
 import com.odisby.githubsearch.domain.Repository
 
@@ -20,20 +18,33 @@ class RepositoryAdapter :
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val layoutInflater = LayoutInflater.from(parent.context)
         val binding = RepositoryItemBinding.inflate(layoutInflater, parent, false)
-        return ViewHolder(binding)
+        return ViewHolder(binding, itemLister, btnShareLister)
     }
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.bind(asyncListDiffer.currentList[position])
+
     }
     override fun getItemCount(): Int = asyncListDiffer.currentList.size
     fun updateList(repositories: List<Repository>){
         asyncListDiffer.submitList(repositories)
     }
     class ViewHolder(
-        private val binding: RepositoryItemBinding
+        private val binding: RepositoryItemBinding,
+        private val itemLister: (Repository) -> Unit,
+        private val btnShareLister: (Repository) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: Repository){
-            binding.tvName.text = item.name
+            binding.tvName.apply {
+                text = item.name
+                setOnClickListener {
+                    itemLister(item)
+                }
+            }
+
+            binding.ivShare.setOnClickListener {
+                btnShareLister(item)
+            }
+
         }
     }
 
